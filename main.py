@@ -23,8 +23,8 @@ import requests
 from bs4 import BeautifulSoup
 import youtube_dl
 
-USERNAME = 'your_username'
-PASSWORD = 'your_password'
+USERNAME = 'alex.nkusi@andela.com'
+PASSWORD = 'Alexshyaka@1980'
 
 # Download subtitles of the videos - use 'True' to download subtitles
 SUBTITLES = False
