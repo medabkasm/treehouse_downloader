@@ -58,13 +58,12 @@ def move_to_course_directory(title):
     except:
         print('Could not create subdirectory for the course: {}'.format(title))
 
-'''
 def getID(link):
     #Go to the web page with the video and extract its ID
-    ideoAttrs = link.find('video').attrs
+    videoAttrs = link.find('video').attrs
     videoId = videoAttrs['data-video-id']
     return videoId
-'''
+
 
 def removeReservedChars(value):
     """ Remove reserved characters because of Windows OS compatibility
@@ -185,8 +184,9 @@ for link in open('links.txt'):
                 ydl.download([videolink])
 
                 if (SUBTITLES):
-                    videoAttrs = soup.find('video').attrs
-                    videoId = videoAttrs['data-video-id']
+                    #videoAttrs = soup.find('video').attrs    
+                    #videoId = videoAttrs['data-video-id']
+                    videoId = getID(soup)
                     info = ydl.extract_info(videolink, download=False)
                     name = info.get('title', None)
                     subs = getSubtitles(videoId, name)
