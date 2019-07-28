@@ -27,7 +27,7 @@ USERNAME = 'your_username'
 PASSWORD = 'your_password'
 
 # Download subtitles of the videos - use 'True' to download subtitles
-SUBTITLES = False
+SUBTITLES = True
 
 # Download accelerator
 EXTERNAL_DL = 'aria2c'
