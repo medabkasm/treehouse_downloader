@@ -185,7 +185,7 @@ for link in open('links.txt'):
                 ydl.download([videolink])
 
                 if (SUBTITLES):
-                    ideoAttrs = link.find('video').attrs
+                    videoAttrs = link.find('video').attrs
                     videoId = videoAttrs['data-video-id']
                     info = ydl.extract_info(videolink, download=False)
                     name = info.get('title', None)
