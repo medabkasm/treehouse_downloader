@@ -58,13 +58,13 @@ def move_to_course_directory(title):
     except:
         print('Could not create subdirectory for the course: {}'.format(title))
 
-'''
+
 def getID(link):
     #Go to the web page with the video and extract its ID
     ideoAttrs = link.find('video').attrs
     videoId = videoAttrs['data-video-id']
     return videoId
-'''
+
 
 def removeReservedChars(value):
     """ Remove reserved characters because of Windows OS compatibility
