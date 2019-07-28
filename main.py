@@ -61,9 +61,9 @@ def move_to_course_directory(title):
 '''
 def getID(link):
     #Go to the web page with the video and extract its ID
-    html = requests.get(link)
-    soup = BeautifulSoup(html.text, "html.parser")
-    return id
+    ideoAttrs = link.find('video').attrs
+    videoId = videoAttrs['data-video-id']
+    return videoId
 '''
 
 def removeReservedChars(value):
@@ -185,11 +185,10 @@ for link in open('links.txt'):
                 ydl.download([videolink])
 
                 if (SUBTITLES):
-                    videoAttrs = soup.find('video').attrs
-                    videoId = videoAttrs['data-video-id']
+                    videoId = getID(soup)
                     info = ydl.extract_info(videolink, download=False)
                     name = info.get('title', None)
-                    subs = getSubtitles(ID, name)
+                    subs = getSubtitles(videoId, name)
 
     except:
         os.chdir(HOME_DIR)
