@@ -187,6 +187,37 @@ def getLinkWorkshop(link):
         videos.append(vidLink)
     return videos
 
+root = tk.Tk()
+root.resizable(0,0)
+root.title('treehouse downloader ')
+root.geometry('450x180+450+250')
+
+myUserName = tk.StringVar()
+username = tk.Label(root,text = 'User Name :',font = '3')
+username.grid(row = 0 , column = 0 , padx = 4 , pady = 10 , sticky = 'e')
+usernameEntry = tk.Entry(root,font = '7',width = 30 , textvariable = myUserName)
+usernameEntry.grid(row = 0 , column = 1, padx = 6 , pady = 10,columnspan = 4 ,sticky = 'we')
+
+myPassword = tk.StringVar()
+password = tk.Label(root,text = 'Password :',font = '3')
+password.grid(row = 2 , column = 0 , padx = 4 ,pady = 10 , sticky = 'e')
+passwordEntry = tk.Entry(root,font = '7',width = 30 , textvariable = myPassword)
+passwordEntry.grid(row = 2 , column = 1 ,padx = 6 , pady = 10,columnspan = 4,sticky = 'we')
+
+text = ' You can skip this step by pressing the Skip button you will be only able \nto download videos previews and subtitles files .'
+alert = tk.Label(root,text = text)
+alert.grid(row = 3 , column = 0 ,columnspan = 4, padx = 2 , pady = 10 , sticky = 'we')
+skip = tk.Button(text = 'Skip')
+skip.grid(row = 4, column = 3 ,columnspan = 2 ,padx = 5, sticky = 'e')
+login = tk.Button(text = 'Login in' , command = do_auth )
+login.grid(row = 4, column = 0 ,columnspan = 2 ,padx = 5, sticky = 'w')
+
+root.mainloop()
+
+
+
+
+
 
 for link in open('links.txt'):
     try:
