@@ -37,6 +37,51 @@ VIDEO_FORMAT = 'webm'
 
 HOME_DIR = os.getcwd()
 
+def do_auth():
+    """Login using username and password, returns logged in session
+    Source: https://github.com/dx0x58/Treehouse-dl
+    """
+    username = myUserName.get()
+    username = username.rstrip()
+    password = myPassword.get()
+    password = password.rstrip()
+
+    print(username)
+    print(password)
+    sess = requests.Session()
+
+    login_page = sess.get('https://teamtreehouse.com/signin')
+    login_page_soup = BeautifulSoup(login_page.text, "html.parser")
+
+    token_val = login_page_soup.find('input', {'name': 'authenticity_token'}).get('value')
+    utf_val = login_page_soup.find('input', {'name': 'utf8'}).get('value')
+
+    post_data = {'user_session[email]': username, 'user_session[password]': password, 'utf8': utf_val,
+                 'authenticity_token': token_val}
+
+    profile_page = sess.post('https://teamtreehouse.com/person_session', data=post_data)
+
+    profile_page_soup = BeautifulSoup(profile_page.text, "html.parser")
+    auth_sign = profile_page_soup.title.text
+    if auth_sign:
+        if auth_sign.lower().find('home') != -1:
+            print('[!] Login success!')
+        else:
+            print('[!!] Not found login attribute\nExit...')
+            sys.exit(0)
+    else:
+        raise Exception('Login failed!')
+
+    return sess
+
+
+def http_get(url):
+    """Returns text of url
+    Source: https://github.com/dx0x58/Treehouse-dl
+    """
+    resp = sess.get(url)
+    return resp.text
+
 
 def move_to_course_directory(title):
     """Check if current directory is home directory. If not, change to it.
