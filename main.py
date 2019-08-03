@@ -22,30 +22,29 @@ import requests
 import sys
 from bs4 import BeautifulSoup
 import youtube_dl
-import Tkinter as tk
-import tkFileDialog
-import tkMessageBox
+import tkinter as tk
+import tkinter.filedialog as tkFileDialog
+import tkinter.messagebox as tkMessageBox
+from tkinter import ttk
+import time
+import threading
+from variables import *   # import all global variables.
 
-USERNAME = 'mirdicamlu@yevme.com'
-PASSWORD = 'mirdicamlu2019'
 
-session = None
-# Download subtitles of the videos - use 'True' to download subtitles
-SUBTITLES = False
-
-# Download accelerator
-EXTERNAL_DL = 'aria2c'
-
-# Video format - webm or mp4
-VIDEO_FORMAT = 'webm'
+#USERNAME = 'pumlalolta@yevme.com'
+#PASSWORD = 'pumlalolta2019'
 
 HOME_DIR = os.getcwd()
 
-
+DIR = str(os.getcwd())  # default links file path.
 
 
 
 def do_auth():
+
+    global root
+    global myUserName
+    global myPassword
     """Login using username and password, returns logged in session
     Source: https://github.com/dx0x58/Treehouse-dl
     """
@@ -54,9 +53,10 @@ def do_auth():
     password = myPassword.get()
     password = password.rstrip()
 
-    sess = requests.Session()
+    global session
+    session = requests.Session()
 
-    login_page = sess.get('https://teamtreehouse.com/signin')
+    login_page = session.get('https://teamtreehouse.com/signin')
     login_page_soup = BeautifulSoup(login_page.text, "html.parser")
 
     token_val = login_page_soup.find('input', {'name': 'authenticity_token'}).get('value')
@@ -65,7 +65,7 @@ def do_auth():
     post_data = {'user_session[email]': username, 'user_session[password]': password, 'utf8': utf_val,
                  'authenticity_token': token_val}
 
-    profile_page = sess.post('https://teamtreehouse.com/person_session', data=post_data)
+    profile_page = session.post('https://teamtreehouse.com/person_session', data=post_data)
 
     profile_page_soup = BeautifulSoup(profile_page.text, "html.parser")
     auth_sign = profile_page_soup.title.text
@@ -73,16 +73,15 @@ def do_auth():
         if auth_sign.lower().find('home') != -1:
             print('[!] Login success!')
             if tkMessageBox.askokcancel("loged in", "Login success! , Continue ?",parent = root):
-                global session
-                session  = sess
                 root.destroy()
-                return sess
+                root = None
+
             else:
                 return None
 
         else:
             print('[!!] Not found login attribute\nExit...')
-            passwordEntry.delete(0,tk.END)
+            #passwordEntry.delete(0,tk.END)
             tkMessageBox.showwarning("Error","invalid credentials",parent = root)
             return None
             #sys.exit(0)
@@ -99,7 +98,8 @@ def http_get(url):
     """Returns text of url
     Source: https://github.com/dx0x58/Treehouse-dl
     """
-    resp = sess.get(url)
+    global session
+    resp = session.get(url)
     return resp.text
 
 
@@ -132,6 +132,11 @@ def getID(link):
 
     for id in soup.select("div#questions-container > ul"):
         return id.attrs["data-step-id"]
+
+def getIdWithNoAuth(videoTag):
+    """Go to the web page with the video and extract its ID
+    """
+    return videoTag.attrs['data-video-id']
 
 
 def removeReservedChars(value):
@@ -214,94 +219,372 @@ def getLinkWorkshop(link):
         videos.append(vidLink)
     return videos
 
-def exitProgram(event = None):
+
+def skipLogin(event = None):
+    global SKIP_LOGIN
+    global root
+    if tkMessageBox.askokcancel("skip login", "skip login ! , Continue ?",parent = root):
+        SKIP_LOGIN = True
+        root.destroy()
+        root = None
+        return 1
+    else:
+        return -1
+
+
+def loginFunc(event = None):
+    global SKIP_LOGIN
+    global homePage
+
+    if(SKIP_LOGIN):    # the user is non authenticated. returns to the login page.
+        SKIP_LOGIN = False
+    else:
+        pass
+
+    homePage.destroy()
+    homePage = None
+    main()     # use this approach to prevent using goto statement.
+    return 1
+
+def exitLogin(event = None ):
     if tkMessageBox.askokcancel("Quit" , " Do you really want to quit?"):
         root.destroy()
         sys.exit(1)
     else:
         return None
 
+def exitHome(event = None ):
+    global homePage
+    if tkMessageBox.askokcancel("Quit" , " Do you really want to quit?"):
+        homePage.destroy()
+        sys.exit(1)
+    else:
+        return None
+
+
+
+def browse():
+
+    global maxValue
+    global linksFileEntry
+
+    filePath = tkFileDialog.askopenfilename(defaultextension=".txt",initialdir = ".",
+                                            filetypes =[("All Files","*.*"),("Text Documents","*.txt")])
+    with open(filePath) as file:
+        maxValue = len(file.readlines())
+
+    global DIR
+    DIR = filePath
+    linksFileEntry.delete(tk.END,0)
+    linksFileEntry.insert(tk.END,DIR)
+
+    return DIR
+
+
+
+def progressBarFunc():
+
+    global currrentValueLinks
+    global maxValueLinks
+    global currrentValueVideos
+    global maxValueVideos
+    global progressBarLinks
+    global progressBarVideos
+    global homePage
+
+    progressBarLinks['maximum'] = maxValueLinks
+    progressBarLinks['value'] = currentValueLinks
+
+    progressBarVideos['maximum'] = maxValueVideos
+    progressBarVideos['value'] = currentValueVideos
+
+    homePage.update_idletasks()
+    print('called','current value links',currentValueLinks)
+    print('called','current value videos ',currentValueVideos)
+    homePage.after(500,progressBarFunc)
+
+    return 1
+
+
+
+
+def home():
+
+    global session
+    global SUBTITLES
+    global VIDEOS
+    global currentValueLinks
+    global currentValueVideos
+    global maxValueLinks
+    global maxValueVideos
+    global linkText
+    global videoText
+    global progressText
+    global startButton
+    global cancelButton
+    global homePage
+
+    SUBTITLES = SUBTITLES_check.get()
+    VIDEOS = VIDEOS_check.get()
+    print('sub',SUBTITLES)
+    print('vid',VIDEOS)
+
+
+    print('max value',maxValueLinks)
+    print('max value videos',maxValueVideos)
+
+    with open(DIR,'r') as linksFile:
+
+        for linkNumber,link in enumerate(linksFile):
+
+            try:
+
+                link = link.strip()
+                #print('Downloading: {}'.format(link))
+
+                linkText.set(str(link))   # for library link above the 1st progress bar.
+
+                videos = getLinksWorkshop(link) or getLinkWorkshop(link) or getLinksCourse(link)
+
+                maxValueVideos = len(videos) - 1
+
+                if(VIDEOS or SUBTITLES):
+
+                    # Generate folder name and move to it
+                    parts = link.split('/')
+                    title = parts[-1]
+                    move_to_course_directory(title)
+                else:
+                    global TEXT
+                    progressText.insert(tk.END,TEXT)
+                    return -1
+
+                for videoNumber,video in enumerate(videos):
+
+                    videoText.set(str(video).rstrip())  # for video link above the 2end progress bar.
+
+                    if(SKIP_LOGIN):  #  if login skipped ( skip button clicked )  get only previews videos.
+                        html = requests.get(video)
+                    else:   # if login is True , get the full length videos .
+                        html = http_get(video)
+
+                    soup = BeautifulSoup(html, "html.parser")
+
+                    # Extract title for filename
+                    h1 = soup.h1.text
+
+                    # Output with the title of the video
+                    output = u'%(id)s-' + removeReservedChars(h1) + u'.%(ext)s'
+
+                    # Youtube-dl options
+                    options = {
+                        'outtmpl': output, 'external_downloader': EXTERNAL_DL
+                        # ,'verbose': True
+                    }
+
+                    # Video source link
+                    tag = soup.video
+                    videolink = tag.find_all(type="video/{}".format(getVideoFormat()))[0].get('src')
+
+
+                    currentValueLinks = linkNumber
+                    currentValueVideos = videoNumber
+
+                    if (VIDEOS):
+                        with youtube_dl.YoutubeDL(options) as ydl:
+                                ydl.download([videolink])
+
+                        if (SUBTITLES):
+                            ID = getIdWithNoAuth(tag)
+                            info = ydl.extract_info(videolink, download=False)
+                            name = info.get('title', None)
+                            subs = getSubtitles(ID, name)
+
+                            currentValueLinks = linkNumber
+                            currentValueVideos = videoNumber
+
+                    elif (SUBTITLES):
+                        with youtube_dl.YoutubeDL(options) as ydl:
+                            info = ydl.extract_info(videolink, download=False)
+                            name = info.get('title', None)
+                        ID = getIdWithNoAuth(tag)
+                        subs = getSubtitles(ID, name)
+
+                        currentValueLinks = linkNumber
+                        currentValueVideos = videoNumber
+
+                    else:
+                        return -1
+
+            except Exception as err:
+                print('Error :: ',str(err))
+                print()
+                progressText.insert(tk.END,'> '+str(err) + '\n')
+
+                os.chdir(HOME_DIR)
+                with open('log.txt', 'a') as logFile:
+                    logFile.write(link)
+                    logFile.write('\n')
+
+
+        # when downloading is finished.
+        startButton.config(text = 'Exit', command = exitHome)
+        cancelButton.pack_forget()
+        #progressText.delete(1.0,tk.END)
+        #progressText.config(fg = 'green')
+        progressText.insert(tk.END,'> DONE !')
+
+        homePage.update_idletasks()  # updated to prevent the cancel button from occuring.
+
+
+
+
+def lunchThreads():
+
+    global maxValueLinks
+    with open(DIR) as file:
+        maxValueLinks = len(file.readlines())-1
+
+    homeThread = threading.Thread(target = home ,name = 'homeThread' , daemon = True)
+    homeThread.start()
+    progressBarThread = threading.Thread(target = progressBarFunc , name = 'progressThread' , daemon = True)
+    progressBarThread.start()  # begin progressing after clickng on start button.
+
+
+
+ # this is the login page .
+def main():
+
+    global root
+    global myUserName
+    global myPassword
+
+    global homePage
+    global linksFileDir
+    global aboveFrame
+    global linksFileButton
+    global linksFile
+    global linksFileEntry
+    global SUBTITLES_check
+    global VIDEOS_check
+    global centerFrame
+    global subtitleCheck
+    global videosChek
+    global filling
+    global linkText
+    global videoText
+    global videoLabel
+    global linkLabel
+    global progressBarLinks
+    global progressBarVideos
+    global downFrame2
+    global startButton
+    global cancelButton
+    global login
+    global downFrame
+    global progressText
+
+    root = tk.Tk()
+    root.resizable(0,0)
+    root.title('treehouse downloader - Login')
+    root.geometry('450x180+450+250')
+    root.protocol("WM_DELETE_WINDOW",exitLogin)
+
+    myUserName = tk.StringVar()
+    username = tk.Label(root,text = 'Email :',font = '3')
+    username.grid(row = 0 , column = 0 , padx = 4 , pady = 10 , sticky = 'e')
+    usernameEntry = tk.Entry(root,font = '7',width = 30 , textvariable = myUserName)
+    usernameEntry.grid(row = 0 , column = 1, padx = 6 , pady = 10,columnspan = 4 ,sticky = 'we')
+
+    myPassword = tk.StringVar()
+    password = tk.Label(root,text = 'Password :',font = '3')
+    password.grid(row = 2 , column = 0 , padx = 4 ,pady = 10 , sticky = 'e')
+    passwordEntry = tk.Entry(root,font = '7',width = 30 ,show = "*" ,textvariable = myPassword)
+    passwordEntry.grid(row = 2 , column = 1 ,padx = 6 , pady = 10,columnspan = 4,sticky = 'we')
+
+    text = ' You can skip this step by pressing the Skip button you will be only able \nto download videos previews and subtitles files .'
+    alert = tk.Label(root,text = text )
+    alert.grid(row = 3 , column = 0 ,columnspan = 4, padx = 2 , pady = 10 , sticky = 'we')
+    skip = tk.Button(text = 'Skip' , command = skipLogin )
+    skip.grid(row = 4, column = 3 ,columnspan = 2 ,padx = 5, sticky = 'we')
+    login = tk.Button(text = 'Login in' , command = do_auth )
+    login.grid(row = 4, column = 0 ,columnspan = 2 ,padx = 5, sticky = 'w')
+
+    root.mainloop()
 
 
 
 
 
-root = tk.Tk()
-root.resizable(0,0)
-root.title('treehouse downloader ')
-root.geometry('450x180+450+250')
-root.protocol("WM_DELETE_WINDOW",exitProgram)
-myUserName = tk.StringVar()
-username = tk.Label(root,text = 'Email :',font = '3')
-username.grid(row = 0 , column = 0 , padx = 4 , pady = 10 , sticky = 'e')
-usernameEntry = tk.Entry(root,font = '7',width = 30 , textvariable = myUserName)
-usernameEntry.grid(row = 0 , column = 1, padx = 6 , pady = 10,columnspan = 4 ,sticky = 'we')
+    # this is the home page.
 
-myPassword = tk.StringVar()
-password = tk.Label(root,text = 'Password :',font = '3')
-password.grid(row = 2 , column = 0 , padx = 4 ,pady = 10 , sticky = 'e')
-passwordEntry = tk.Entry(root,font = '7',width = 30 ,show = "*" ,textvariable = myPassword)
-passwordEntry.grid(row = 2 , column = 1 ,padx = 6 , pady = 10,columnspan = 4,sticky = 'we')
+    if(SKIP_LOGIN):
+        title = 'threehouse downloader - non authenticated user '
+        loginButtonText = 'login'   # shows when user press skip key.
+    else:
+        title = 'treehouse downloader - Home '
+        loginButtonText = 'logout'  # show when user enters valid authentication informations.
 
-text = ' You can skip this step by pressing the Skip button you will be only able \nto download videos previews and subtitles files .'
-alert = tk.Label(root,text = text)
-alert.grid(row = 3 , column = 0 ,columnspan = 4, padx = 2 , pady = 10 , sticky = 'we')
-skip = tk.Button(text = 'Skip')
-skip.grid(row = 4, column = 3 ,columnspan = 2 ,padx = 5, sticky = 'we')
-login = tk.Button(text = 'Login in' , command = do_auth )
-login.grid(row = 4, column = 0 ,columnspan = 2 ,padx = 5, sticky = 'w')
+    homePage = tk.Tk()
+    homePage.resizable(0,0)
+    homePage.title(title)
+    homePage.geometry('700x400+450+250')
+    homePage.protocol("WM_DELETE_WINDOW",exitHome)
 
-root.mainloop()
+    linksFileDir = tk.StringVar()
+    linksFileDir.set(DIR)
+    aboveFrame = tk.Frame(homePage,height = 50,highlightbackground = 'black' ,highlightthickness = 1)
+    linksFileButton = tk.Button(aboveFrame,text = 'Browse',command = browse)
+    linksFile = tk.Label(aboveFrame,text = ' Import links file :')
+    linksFileEntry = tk.Entry(aboveFrame ,width = 50 , font = '4')
+    linksFileEntry.insert(tk.END,linksFileDir.get())
+
+    linksFile.pack(side = tk.LEFT , padx = 2 , pady = 10 , anchor = 'w')
+    linksFileEntry.pack(side = tk.LEFT , padx = 2 , pady = 10, anchor = 'w')
+    linksFileButton.pack(side = tk.RIGHT , padx = 5 , pady = 10 )
+    aboveFrame.pack(fill = tk.X , anchor = 'n', padx = 5 , pady = 5)
+
+    SUBTITLES_check = tk.IntVar()
+    VIDEOS_check = tk.IntVar()
+    centerFrame = tk.Frame(homePage)
+    subtitleCheck = tk.Checkbutton(centerFrame, text = 'get subtitles files' ,variable = SUBTITLES_check ,onvalue = 1 , offvalue = 0)
+    videosChek = tk.Checkbutton(centerFrame, text = 'get videos' ,variable = VIDEOS_check ,onvalue = 1 , offvalue = 0)
+    filling = tk.Label(centerFrame , width = 50)
+    centerFrame.pack(anchor = 'n' , pady = 5 )
+    subtitleCheck.pack(side = tk.LEFT , anchor = 'w')
+    videosChek.pack(side = tk.LEFT , anchor = 'w')
+
+    linkText = tk.StringVar()
+    videoText = tk.StringVar()
+    videoLabel = tk.Label(homePage,textvariable = videoText)
+    linkLabel = tk.Label(homePage,textvariable = linkText)
+    progressBarLinks = ttk.Progressbar(homePage,orient ="horizontal",length = 100, mode ="determinate")
+    progressBarVideos = ttk.Progressbar(homePage,orient ="horizontal",length = 100, mode ="determinate")
+    filling.pack( padx = 5 , pady = 5 )
+    linkLabel.pack( anchor = 'w',padx = 10)
+    progressBarLinks.pack( padx = 10, fill = tk.X )
+    videoLabel.pack( anchor = 'w',padx = 10)
+    progressBarVideos.pack( padx = 10  ,fill = tk.X )
+
+    downFrame2 = tk.Frame(homePage)
+    startButton = tk.Button(downFrame2,text = 'start',command = lunchThreads )
+    cancelButton = tk.Button(downFrame2,text = 'cancel',command = exitHome )
+    login = tk.Button(downFrame2,text = loginButtonText , command = loginFunc )
+
+    startButton.pack(expand = tk.NO , side = tk.RIGHT ,padx = 5 )
+    cancelButton.pack(expand = tk.NO , side = tk.RIGHT )
+    login.pack(expand = tk.NO , side = tk.RIGHT ,padx = 5 )
+
+    downFrame2.pack(fill = tk.BOTH , padx = 5 , pady = 5 )
+    downFrame = tk.Frame(homePage)
+    progressText = tk.Text(downFrame ,bg = 'black' , fg = 'white')
+
+    progressText.pack(fill = tk.X )
+    downFrame.pack(fill = tk.BOTH , padx = 10 , pady = 5  , ipadx = 3, ipady = 3)
+
+    homePage.mainloop()
 
 
-for link in open('links.txt'):
-    sess = session       # use the returning value of do_auth function for iteration.
-    print(sess)
-    try:
-        link = link.strip()
-        print('Downloading: {}'.format(link))
 
-        videos = getLinksWorkshop(link) or getLinkWorkshop(link) or getLinksCourse(link)
-
-        # Generate folder name and move to it
-        parts = link.split('/')
-        title = parts[-1]
-        move_to_course_directory(title)
-
-        for video in videos:
-            html = http_get(video)
-            soup = BeautifulSoup(html, "html.parser")
-
-            # Extract title for filename
-            h1 = soup.h1.contents[0]
-
-            # Output with the title of the video
-            output = u'%(id)s-' + removeReservedChars(h1) + u'.%(ext)s'
-
-            # Video source link
-            tag = soup.video
-            videolink = tag.find_all(type="video/{}".format(getVideoFormat()))[0].get('src')
-
-            # Youtube-dl options
-            options = {
-                'outtmpl': output, 'external_downloader': EXTERNAL_DL
-                # ,'verbose': True
-            }
-
-            with youtube_dl.YoutubeDL(options) as ydl:
-
-                print(ydl)
-                ydl.download([videolink])
-                print('downloaded')
-                if (SUBTITLES):
-                    ID = getID(video)
-                    info = ydl.extract_info(videolink, download=False)
-                    name = info.get('title', None)
-                    subs = getSubtitles(ID, name)
-
-    except:
-        os.chdir(HOME_DIR)
-        log = open('log.txt', 'a')
-        log.write(link)
-        log.write('\n')
-        log.close()
+if __name__ == '__main__':      # run the program.
+    main()
