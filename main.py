@@ -29,7 +29,7 @@ from tkinter import ttk
 import time
 import threading
 from variables import *   # import all global variables.
-
+import platform  # to check which operation system we are running.
 
 #USERNAME = 'pumlalolta@yevme.com'
 #PASSWORD = 'pumlalolta2019'
@@ -71,7 +71,7 @@ def do_auth():
     auth_sign = profile_page_soup.title.text
     if auth_sign:
         if auth_sign.lower().find('home') != -1:
-            print('[!] Login success!')
+            #print('[!] Login success!')
             if tkMessageBox.askokcancel("loged in", "Login success! , Continue ?",parent = root):
                 root.destroy()
                 root = None
@@ -80,7 +80,7 @@ def do_auth():
                 return None
 
         else:
-            print('[!!] Not found login attribute\nExit...')
+            #print('[!!] Not found login attribute\nExit...')
             #passwordEntry.delete(0,tk.END)
             tkMessageBox.showwarning("Error","invalid credentials",parent = root)
             return None
@@ -197,12 +197,11 @@ def getLinksWorkshop(link):
     """
     html = requests.get(link)
     soup = BeautifulSoup(html.text, "html.parser")
-
     # Find all urls of the videos
     videos = []
     for a in soup.select('li.workshop-video a[href^="/library/"]'):
         vidLink = '{}{}'.format('https://teamtreehouse.com', a['href'])
-        videos.append(vidLink)
+        print(videolink)
     return videos
 
 
@@ -211,14 +210,12 @@ def getLinkWorkshop(link):
     """
     html = requests.get(link)
     soup = BeautifulSoup(html.text, "html.parser")
-
     # Find all urls of the videos
     videos = []
     for a in soup.select('a#workshop-hero'):
         vidLink = '{}{}'.format('https://teamtreehouse.com', a['href'])
         videos.append(vidLink)
     return videos
-
 
 def skipLogin(event = None):
     global SKIP_LOGIN
@@ -270,8 +267,8 @@ def browse():
 
     filePath = tkFileDialog.askopenfilename(defaultextension=".txt",initialdir = ".",
                                             filetypes =[("All Files","*.*"),("Text Documents","*.txt")])
-    with open(filePath) as file:
-        maxValue = len(file.readlines())
+    #with open(filePath) as file:
+        #maxValue = len(file.readlines())
 
     global DIR
     DIR = filePath
@@ -299,8 +296,6 @@ def progressBarFunc():
     progressBarVideos['value'] = currentValueVideos
 
     homePage.update_idletasks()
-    print('called','current value links',currentValueLinks)
-    print('called','current value videos ',currentValueVideos)
     homePage.after(500,progressBarFunc)
 
     return 1
@@ -323,19 +318,20 @@ def home():
     global startButton
     global cancelButton
     global homePage
+    global videoNumberPause
+    global linkNumberPause
+    global linksList
+    global DIR
 
     SUBTITLES = SUBTITLES_check.get()
     VIDEOS = VIDEOS_check.get()
-    print('sub',SUBTITLES)
-    print('vid',VIDEOS)
-
-
-    print('max value',maxValueLinks)
-    print('max value videos',maxValueVideos)
 
     with open(DIR,'r') as linksFile:
 
-        for linkNumber,link in enumerate(linksFile):
+        #for linkNumber,link in enumerate(linksList[linkNumberPause:]):
+        for linkNumber , link in enumerate(linksFile):
+
+            #linkNumberPause = linkNumberPause + 1
 
             try:
 
@@ -349,18 +345,21 @@ def home():
                 maxValueVideos = len(videos) - 1
 
                 if(VIDEOS or SUBTITLES):
+                    #progressText.delete(1.0,tk.END)
 
                     # Generate folder name and move to it
                     parts = link.split('/')
                     title = parts[-1]
                     move_to_course_directory(title)
+
                 else:
                     global TEXT
                     progressText.insert(tk.END,TEXT)
                     return -1
 
-                for videoNumber,video in enumerate(videos):
-
+                for videoNumber,video in enumerate(videos):    # download from  pause to the end.
+                #for videoNumber,video in enumerate(videos):    # download from  pause to the end.
+                    #videoNumberPause = videoNumberPause + 1
                     videoText.set(str(video).rstrip())  # for video link above the 2end progress bar.
 
                     if(SKIP_LOGIN):  #  if login skipped ( skip button clicked )  get only previews videos.
@@ -368,7 +367,7 @@ def home():
                     else:   # if login is True , get the full length videos .
                         html = http_get(video)
 
-                    soup = BeautifulSoup(html, "html.parser")
+                    soup = BeautifulSoup(html.text, "html.parser")
 
                     # Extract title for filename
                     h1 = soup.h1.text
@@ -416,9 +415,10 @@ def home():
                     else:
                         return -1
 
+
             except Exception as err:
-                print('Error :: ',str(err))
-                print()
+                #print('Error :: ',str(err))
+                #print()
                 progressText.insert(tk.END,'> '+str(err) + '\n')
 
                 os.chdir(HOME_DIR)
@@ -427,14 +427,16 @@ def home():
                     logFile.write('\n')
 
 
-        # when downloading is finished.
-        startButton.config(text = 'Exit', command = exitHome)
-        cancelButton.pack_forget()
-        #progressText.delete(1.0,tk.END)
-        #progressText.config(fg = 'green')
-        progressText.insert(tk.END,'> DONE !')
 
-        homePage.update_idletasks()  # updated to prevent the cancel button from occuring.
+
+    # when downloading is finished.
+    startButton.config(text = 'Exit', command = exitHome)
+    cancelButton.pack_forget()
+    #progressText.delete(1.0,tk.END)
+    #progressText.config(fg = 'green')
+    progressText.insert(tk.END,'> DONE !')
+
+    homePage.update_idletasks()  # updated to prevent the cancel button from occuring.
 
 
 
@@ -442,13 +444,52 @@ def home():
 def lunchThreads():
 
     global maxValueLinks
-    with open(DIR) as file:
-        maxValueLinks = len(file.readlines())-1
+    global linksList
+    global homePage
+
+
+    if platform.system() == 'Linux':
+        if '/' in DIR:
+            fileName = DIR.split('/')[-1]
+            if '.txt' in fileName:
+                with open(DIR) as file:
+                    maxValueLinks = len(file.readlines()) - 1
+                    for link in file:
+                        linksList.append(link.strip())
+            else:
+                if tkMessageBox.askokcancel("file error", "invalid file format ,Choose another file ?",parent = homePage):
+                    browse()
+                    return 1
+                else:
+                    return -1
+        else:
+            tkMessageBox.showerror("path error","not valid path for the links file.")
+            return -1
+
+    elif platform.system() == 'Windows':
+        if '\\' in DIR:
+            fileName = DIR.split('/')[-1]
+            if '.txt' in fileName:
+                with open(DIR) as file:
+                    maxValueLinks = len(file.readlines()) - 1
+                    for link in file:
+                        linksList.append(link.strip())
+            else:
+                if tkMessageBox.askokcancel("file error", "Chose another links file ?",parent = homePage):
+                    browse()
+                    return 1
+                else:
+                    return -1
+        else:
+            tkMessageBox.showerror("path error","not valid path for the links file.")
+            return -1
+
 
     homeThread = threading.Thread(target = home ,name = 'homeThread' , daemon = True)
     homeThread.start()
     progressBarThread = threading.Thread(target = progressBarFunc , name = 'progressThread' , daemon = True)
     progressBarThread.start()  # begin progressing after clickng on start button.
+
 
 
 
@@ -521,15 +562,31 @@ def main():
     if(SKIP_LOGIN):
         title = 'threehouse downloader - non authenticated user '
         loginButtonText = 'login'   # shows when user press skip key.
+        user = 'not authenticated'
+        logStutus = 'login'
+
     else:
         title = 'treehouse downloader - Home '
         loginButtonText = 'logout'  # show when user enters valid authentication informations.
+        user = myUserName.get()
+        logStutus = 'logout'
+
+    logCommand = 'loginFunc'
 
     homePage = tk.Tk()
     homePage.resizable(0,0)
     homePage.title(title)
     homePage.geometry('700x400+450+250')
     homePage.protocol("WM_DELETE_WINDOW",exitHome)
+
+
+    menuBar = tk.Menu(homePage)
+    accountMenu = tk.Menu(menuBar,tearoff = 0)
+    menuBar.add_cascade(label = "Account",menu = accountMenu)
+    accountMenu.add_command(label = user)
+    accountMenu.add_separator()
+    accountMenu.add_command(label = logStutus,command = eval(logCommand))
+
 
     linksFileDir = tk.StringVar()
     linksFileDir.set(DIR)
