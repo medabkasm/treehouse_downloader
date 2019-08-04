@@ -36,6 +36,11 @@ login = None
 downFrame = None
 progressText = None
 
+# for pause downloading .
+
+videoNumberPause = 0
+linkNumberPause = 0
+linksList = []
 
 # Download subtitles of the videos - use 'True' to download subtitles
 SUBTITLES = 0
