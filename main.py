@@ -2,16 +2,11 @@
 Treehouse Video Downloader downloads videos from
 the specified Treehouseteam.com courses and workshops.
 
-To use it change the username and password in this file
-and define the course/workshop you would like to download
+define the course/workshop you would like to download
 in the links.txt file.
 
 You can change the format - default is mp4, but you can
 also get webm, just change VIDEO_FORMAT = 'webm' below.
-
-If you would like to download the subtitles of the
-videos set `SUBTITLES = True`. They are not downloaded
-by default.
 
 If download fails, the link will be saved in log.txt
 """
