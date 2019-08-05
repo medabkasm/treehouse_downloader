@@ -24,11 +24,6 @@ pip install beautifulsoup4
 
 ## Usage
 
-1. Add your credentials to `main.py` file
-```
-USERNAME = 'your_username'
-PASSWORD = 'your_password'
-```
 2. define the **courses/workshops** you would like to download in the `links.txt` file. Example list of the courses/workshops is already in the file.
 3. Go to file directory where `main.py` and `links.txt` are saved and run `main.py` from the terminal with: `python main.py`
 4. Wait until all videos are downloaded and have fun watching them.
@@ -36,14 +31,6 @@ PASSWORD = 'your_password'
 If the **download of the video fails**, the course URL will be saved in `log.txt`.
 
 ## Options
-### Subtitles
-
-If you would like to:
-- download the **subtitles** of the videos set `SUBTITLES = True`. They are not downloaded by default.
-- download ONLY subititles and not the videos set `SUBTITLES = True` and comment out the line that downloads the video
-```
-# ydl.download([videolink])
-```
 
 ### Video format
 The default video format is webm, but you can
